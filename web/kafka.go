@@ -29,6 +29,7 @@ var (
 	Num     int
 	Thread  int
     json  = jsoniter.ConfigCompatibleWithStandardLibrary
+    KafkaOpen = 0
 )
 
 func (access *KafkaAccess) Send(data []*sarama.ProducerMessage, client sarama.SyncProducer) {

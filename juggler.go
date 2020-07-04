@@ -42,13 +42,14 @@ var versionInfo = `[*] 更新说明
 func main() {
 
 	var err error
-	v := flag.Bool("v", false, "version update log.")
-	p := flag.String("p", "8888", "port, 8888 as default.")
-	l := flag.String("l", "is.log", "log file path, ./is.log as default.")
-	c := flag.String("c", "conf.toml", "plugins path, ./scripts as default.")
-	s := flag.String("s", "scripts/", "plugins path, ./scripts/ as default, must be end with '/'.")
-	r := flag.String("r", "html/", "response body file path, ./html/ as default, must be end with '/'.")
-	g := flag.Int("g", web.DefaultGzip, "response body gzip type, DefaultGzip as default. It can be BestGzip, DefaultGzip or NoGzip.")
+	v := flag.Bool("v", false, "版本参数")
+	p := flag.String("p", "8888", "端口参数 默认端口8888")
+	l := flag.String("l", "is.log", "日志路径参数 默认是./is.log")
+	c := flag.String("c", "conf.toml", "配置文件路径参数 默认是./conf.toml")
+	s := flag.String("s", "scripts/", "插件路径参数 默认是./scripts/")
+	r := flag.String("r", "html/", "响应内容文件路径参数 默认是./html/ 且自定义路径必须以/结尾")
+	g := flag.Int("g", web.DefaultGzip, "响应内容gzip压缩参数 默认DefaultGzip 0是不压缩 1是默认压缩 2是极致压缩")
+	k := flag.Int("k", web.KafkaOpen, "kafka线程启动开关参数 默认开 0是开 其他都是关")
 	// 初始化应用参数
 	flag.Parse()
 	// 初始化日志打印器
@@ -107,8 +108,10 @@ func main() {
 	}
 	defer golua.LuaPool.Shutdown()
 
-	web.KAccess.Thread()
-	go web.KAccess.Start()
+	if *k == 0 {
+		web.KAccess.Thread()
+		go web.KAccess.Start()
+	}
 
 	web.WebServer(port, *g)
 }
