@@ -67,6 +67,7 @@ resp.string(200, "host of this request is %s", var.host)
 ### 使用方式
 
 项目流程图
+![image](pics/juggler.jpg)
 
 示例插件
 
@@ -126,19 +127,224 @@ return
 
 ### 插件编写灵活
 
+插件支持lua所有常见语法，暂时不支持goto。可以调用预先注册好的变量、函数、模块。
+
+实现个很简单的响应状态码404的页面。
+
+```lua
+local var = rock.var
+local resp = rock.resp
+
+resp.set_header("Content-Type", "text/html; charset=utf-8")
+resp.string(404, "this is 404 page! your host is %s, your ip is %s.", var.host, var.addr)
+```
+
 ### 插件和响应文件被动式更新
 
+加载时会初始化所有的插件和响应内容文件。
+
+![image](pics/juggler-1.gif)
+
+使用inotify来监听文件行为，实现被动式的更新，不用写那个多主动轮询的for循环。
+
+![image](pics/juggler-2.gif)
+
 ### 丰富三方插件库可自行定义
+
+juggler中的lua插件除了lua本身的一些变量，其他的都是由golang实现后注册进lua虚拟机供lua进行调用的。
+
+例如定义一个生成随机数的golang-lua函数
+
+```go
+// L是lua虚拟机
+var L *lua.LState
+// 注册这个模块
+L.PreloadModule("random", luaRandom)
+
+// golang中定义的可在lua中使用的生成随机数方法
+var randFns = map[string]lua.LGFunction{
+	"rint" : rint,
+}
+
+func rint(L *lua.LState) int {
+
+	rand.Seed(time.Now().UnixNano())
+	L.Push(lua.LNumber(rand.Intn(L.CheckInt(1))+1))
+	return 1
+}
+```
+
+lua使用方式
+
+```lua
+local random = require("random")
+print(random.rint(3))
+-- 每次运行会打印 0,1,2 中的一个
+```
 
 ## 已实现需求
 
 ### 功能
 
-### 每个请求可操作的变量
+### 每个请求可操作的变量和函数
 
-### 内置模块和对应需求
+1. 项目全局根变量：rock
 
-## 联动WAF使用流程
+项目所有的变量的，类型是table。
+
+2. http请求：rock.var
+
+包含了部分的当前请求的参数，具体参数见golua/request.go，已经覆盖了常见的参数了
+
+```go
+    case "host":
+		L.Push(lua.LString(r.Host))
+	case "status":
+		L.Push(lua.LNumber(w.Status()))
+	case "xff":
+		L.Push(lua.LString(r.Header.Get("x-forwarded-for")))
+	case "rule":
+		L.Push(lua.LString(r.Header.Get("rule")))
+	case "size":
+		L.Push(lua.LNumber(w.Size()))
+	case "method":
+		L.Push(lua.LString(r.Method))
+	case "uri":
+		L.Push(lua.LString(r.URL.Path))
+	case "app":
+		L.Push(lua.LString(r.Header.Get("x-Rock-APP")))
+	case "addr":
+		L.Push(lua.LString(r.Header.Get("x-real-ip")))
+	case "saddr":
+		L.Push(lua.LString(r.RemoteAddr))
+	case "query":
+		L.Push(lua.LString(r.URL.RawQuery))
+	case "ref":
+		L.Push(lua.LString(r.Referer()))
+	case "ua":
+		L.Push(lua.LString(r.UserAgent()))
+	case "ltime":
+		L.Push(lua.LNumber(time.Now().Unix()))
+	default:
+		L.Push(lua.LNil)
+```
+
+3. http响应：rock.resp
+
+处理响应，通过每个请求的*gin.Context存在userdata的值进行操作
+
+```lua
+local resp = rock.resp
+
+-- 参数是状态码number类型，无返回
+resp.status(200)
+-- *gin.Context响应回显状态码
+
+-- 参数是 状态码number类型、响应体是格式化字符串string类型、任意类型，无返回
+resp.string(200, "return a string..%s", "xx")
+-- *gin.Context响应回显状态码，并返回格式化字符串
+
+-- 参数是 状态码number类型、响应体文件名是string类型、任意类型，无返回
+-- 第二个参数对应的文件在项目html目录下，如输入juggler_404，那么实际内容就是juggler_404.html
+-- 如果找不到该文件，就返回default_404.html的内容，所有内容会在第一次加载后缓存进内存
+resp.html(200, "juggler_404")
+-- *gin.Context响应回显状态码，和缓存页面内容（实际上也是格式化字符串）
+
+-- 参数是 状态码number类型，url是string类型
+-- 第二个参数是可以进行克隆的url，比如不方便直接存，那可以直接克隆，内容会在克隆完成一次后缓存进内存
+resp.clone(200, "http://juggler.test.com/uri?p=1")
+-- *gin.Context响应克隆出来的内容
+
+-- 参数是 头的key和头的值，都是string类型，没有返回
+resp.set_header("Content-Type", "text/html; charset=utf-8")
+-- *gin.Context设置头参数
+
+-- 参数是 cookie的key和值，都是string类型，生命周期number类型，作用路径和作用域名是string类型，secure和httponly是布尔类型，没有返回
+resp.set_cookie("sessionid", "admin_session", 6000, "/", var.host, true, true)
+-- *gin.Context设置cookie
+```
+
+### 内置模块、函数和对应需求
+
+1. 正则匹配：re
+
+统一拦截规则可能会需要根据不同uri区分子业务来返回对应的欺骗页面
+
+re中实现缓存，所以性能优于golang原生（虽然golang中的正则匹配性能一直被诟病
+
+```lua
+local var = rock.var
+local re = require("re")
+
+-- 参数是 待匹配字符串、正则匹配语法，返回bool类型
+local res = re.match(var.uri, "^/admin/")
+-- 输入 true或者false
+```
+
+2. 时间相关：time
+
+服务器的Date时间特定格式、使用unix时间戳计算、日志打印格式化时间
+
+```lua
+local time = require("time")
+
+-- 没有参数，返回number类型
+local zero = time.zero
+-- 输出 1590829200，主要用来做差值算余数
+
+-- 没有参数，返回string类型
+local server_date = time.server_date()
+-- 输出 Mon, 06 Jul 2020 15:28:49 GMT
+
+-- 没有参数，返回string类型
+local format_time = time.format()
+-- 输出 2020-07-06 15:30:14
+```
+
+3. 加密：crypto
+
+业务上会有些接口，每次报错会返回一个随机md5，为了完全仿真，我们返回的数据的md5必然也要随机
+
+```lua
+local crypto = require("crypto")
+
+-- 参数是string类型，返回string类型
+local md5sum = crypto.md5sum("123")
+-- 输出 202cb962ac59075b964b07152d234b70
+
+-- 参数是16或32，number类型，返回string类型
+local randomMD5 = crypto.randomMD5(16)
+-- 输出一个随机的对应长度的md5
+```
+
+4. 随机数：random
+
+lua中使用随机数对table内容进行随机筛选，由于lua自带的随机数函数太不随机，所以自己实现
+
+```lua
+local random = require("random")
+
+-- 参数是随机数范围，返回number类型
+local ri = random.rint(3)
+-- 输出 0,1,2 中的一个
+```
+
+5. 日志打印：log、ERROR、DEBUG、INFO
+
+ERROR、DEBUG、INFO都是日志等级
+
+```lua
+local log = rock.log
+local ERR = rock.ERROR
+
+-- 参数是 日志等级（number类型）、格式化字符串（string类型）、若干个填入内容（任意类型），没有返回
+log(ERR, "this is a err msg.")
+-- 日志中输出 2020/07/06 15:32:43 [error] this is a err msg.
+```
+
+## 联动WAF使用
+
+![image](pics/juggler-waf.jpg)
 
 ## 本项目在现实中的应用
 
