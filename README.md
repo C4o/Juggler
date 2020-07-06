@@ -188,11 +188,11 @@ print(random.rint(3))
 
 ### 每个请求可操作的变量和函数
 
-####1. 项目全局根变量：rock
+#### 1. 项目全局根变量：rock
 
 项目所有的变量的，类型是table。
 
-####2. http请求：rock.var
+#### 2. http请求：rock.var
 
 包含了部分的当前请求的参数，具体参数见golua/request.go，已经覆盖了常见的参数了
 
@@ -229,7 +229,7 @@ print(random.rint(3))
 		L.Push(lua.LNil)
 ```
 
-####3. http响应：rock.resp
+#### 3. http响应：rock.resp
 
 处理响应，通过每个请求的*gin.Context存在userdata的值进行操作
 
@@ -266,7 +266,7 @@ resp.set_cookie("sessionid", "admin_session", 6000, "/", var.host, true, true)
 
 ### 内置模块、函数和对应需求
 
-####1. 正则匹配：re
+#### 1. 正则匹配：re
 
 统一拦截规则可能会需要根据不同uri区分子业务来返回对应的欺骗页面
 
@@ -281,7 +281,7 @@ local res = re.match(var.uri, "^/admin/")
 -- 输入 true或者false
 ```
 
-####2. 时间相关：time
+#### 2. 时间相关：time
 
 服务器的Date时间特定格式、使用unix时间戳计算、日志打印格式化时间
 
@@ -301,7 +301,7 @@ local format_time = time.format()
 -- 输出 2020-07-06 15:30:14
 ```
 
-####3. 加密：crypto
+#### 3. 加密：crypto
 
 业务上会有些接口，每次报错会返回一个随机md5，为了完全仿真，我们返回的数据的md5必然也要随机
 
@@ -317,7 +317,7 @@ local randomMD5 = crypto.randomMD5(16)
 -- 输出一个随机的对应长度的md5
 ```
 
-####4. 随机数：random
+#### 4. 随机数：random
 
 lua中使用随机数对table内容进行随机筛选，由于lua自带的随机数函数太不随机，所以自己实现
 
@@ -329,7 +329,7 @@ local ri = random.rint(3)
 -- 输出 0,1,2 中的一个
 ```
 
-####5. 日志打印：log、ERROR、DEBUG、INFO
+#### 5. 日志打印：log、ERROR、DEBUG、INFO
 
 ERROR、DEBUG、INFO都是日志等级
 
