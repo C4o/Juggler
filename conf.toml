@@ -1,16 +1,31 @@
-#############################
+######################################
+Title = "IUS Configure File"
+#### 默认拦截策略
+[Default]
+B64 = true
+Html = "/rootpath/subpath"
+Status = 404
+Debug = 5
+
+######################################
+#### 业务拦截配置
+## test CC攻击拦截策略
+[Incept."a.test.com".CC]
+Html = "/root/path/a.test.com_cc/"
+Headers = '{"Server":"IIS1.0","Date":" Wed, 25 Dec 2019 09:53:04 GMT","Content-Type":" text/html; charset=utf-8","Connection":" close","Vary":" Accept-Encoding","Cache-Control":" public, max-age=18","Expires":" Wed, 25 Dec 2019 09:53:21 GMT","Last-Modified":" Wed, 25 Dec 2019 09:52:21 GMT","Vary":" *","X-AspNetMvc-Version":" 5.2","X-AspNet-Version":" 4.0.30319","X-Powered-By":" ASP.NET"}'
+Status = 403
+
+######################################
+### body编码保存方式,默认false代表不编码
+[Encode]
+"x.c4o.com" = true
+"y.c4o.com"   = true
+
+######################################
 ### kafka相关配置
 [Kafka]
 topic  = "intercept"
 num    = 10
 thread = 20
 addr   = "192.168.1.1:9092"
-on     = false
-#############################
-[Other]
-### 节点信息
 local  = "127.0.0.1"
-### 日志等级
-debug = 10
-### 虚拟机个数
-vmnum = 5
