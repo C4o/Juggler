@@ -184,8 +184,6 @@ print(random.rint(3))
 
 ## 已实现需求
 
-### 功能
-
 ### 每个请求可操作的变量和函数
 
 #### 1. 项目全局根变量：rock
@@ -362,3 +360,9 @@ log(ERR, "this is a err msg.")
 
 项目地址：[https://github.com/C4o/LogFarmer](https://github.com/C4o/LogFarmer)
 
+## 404StarLink 2.0 - Galaxy
+![](https://github.com/knownsec/404StarLink-Project/raw/master/logo.png)
+
+Juggler 是 404Team [星链计划2.0](https://github.com/knownsec/404StarLink2.0-Galaxy)中的一环，如果对Juggler有任何疑问又或是想要找小伙伴交流，可以参考星链计划的加群方式。
+
+- [https://github.com/knownsec/404StarLink2.0-Galaxy#community](https://github.com/knownsec/404StarLink2.0-Galaxy#community)

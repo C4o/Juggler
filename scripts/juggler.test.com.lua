@@ -27,12 +27,14 @@ if var.rule == "xss" and re.match(var.uri, "^/admin/") then
     return
 end
 
+-- 文件读取漏洞检测到就返回一个假的逼真的对应内容
 if var.rule == "lfi_shadow" then
     -- 使用预存文件etc_shadow.html进行内容回显，状态码200
     resp.html(200, "etc_shadow")
     return
 end
 
+-- 使用waf来匹配特定cookie用来后续把黑客引流到蜜罐
 if var.rule == "rce" then
     resp.set_header("Content-Type", "text/html; charset=utf-8")
     -- 在响应中set_cookie
